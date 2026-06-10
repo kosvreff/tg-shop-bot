@@ -173,3 +173,19 @@ async def approve(cb: CallbackQuery):
     await cb.message.edit_reply_markup(); await cb.answer("✅ Опубликовано!")
 
 @router.callback_query(F.data.
+startswith("reject_"))
+async def reject(cb: CallbackQuery):
+    if cb.from_user.id != OWNER_ID: return await cb.answer("Нет прав.", show_alert=True)
+    ad_id = int(cb.data.split("_")[1])
+    cur.execute("SELECT * FROM ads WHERE id=?", (ad_id,)); row = cur.fetchone()
+    if not row: return await cb.answer("Не найдено.", show_alert=True)
+    if row[8] != "pending": return await cb.answer("Уже обработано.", show_alert=True)
+    cur.execute("UPDATE ads SET status='rejected' WHERE id=?", (ad_id,)); conn.commit()
+    try:
+        await bot.send_message(row[1], "❌ Ваше объявление отклонено модератором.")
+    except Exception as e: logging.error(e)
+    await cb.message.edit_reply_markup(); await cb.answer("❌ Отклонено.")
+
+if __name__ == "__main__":
+    import asyncio
+    asyncio.run(dp.start_polling(bot))
